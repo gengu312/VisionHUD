@@ -249,8 +249,8 @@ export default function Demo() {
             <GlassPanel className="mt-6 p-4" glow>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-zinc-100">HUD 结果</div>
-                  <div className="mt-1 text-xs text-zinc-400">结构化卡片输出，用于营销演示</div>
+                  <div className="text-sm font-semibold text-zinc-100">HUD 交互</div>
+                  <div className="mt-1 text-xs text-zinc-400">点选画面中的高亮框，贴边弹出可收起卡片</div>
                 </div>
               </div>
               <div className="mt-4">
@@ -268,6 +268,15 @@ export default function Demo() {
                         </div>
                       ) : null}
                       {result.meta?.note ? <div className="mt-2 text-[11px] text-zinc-400">{result.meta.note}</div> : null}
+                      {result.highlights?.length ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {result.highlights.slice(0, 5).map((highlight) => (
+                            <span key={highlight.id} className="rounded-full border border-cyan-200/12 bg-cyan-400/8 px-2.5 py-1 text-[11px] text-cyan-100/85">
+                              {highlight.label}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="mt-3">
                       <HudCardList cards={result.cards} />

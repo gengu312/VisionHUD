@@ -112,7 +112,12 @@ export default function HudMediaFrame({ status, previewUrl, fileType, result }: 
           <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-cyan-400/20 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-cyan-400/20 to-transparent" />
         </div>
-        {showHighlights ? <HudHighlights rect={displayRect} highlights={overlayHighlights} callouts={result?.cards ?? []} /> : null}
+        {showHighlights && result ? <HudHighlights rect={displayRect} highlights={overlayHighlights} mode={result.mode} /> : null}
+        {showHighlights ? (
+          <div className="absolute right-4 top-4 rounded-full border border-cyan-200/15 bg-zinc-950/45 px-3 py-1.5 text-[11px] tracking-[0.18em] text-cyan-100/75 backdrop-blur">
+            TAP HIGHLIGHT TO OPEN HUD
+          </div>
+        ) : null}
         <div className="absolute left-4 bottom-4 rounded-lg border border-white/10 bg-zinc-950/40 px-3 py-2 text-xs text-zinc-300 backdrop-blur">
           <div className="font-semibold text-cyan-200/90">AI HUD</div>
           <div className="mt-0.5 text-[11px] text-zinc-400">{result?.meta?.overlayMode === 'semantic' ? 'Semantic overlay' : 'First-person overlay'}</div>

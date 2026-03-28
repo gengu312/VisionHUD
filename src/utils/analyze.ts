@@ -7,6 +7,10 @@ type SemanticFocusPoint = {
   kind?: AnalyzeHighlightKind
   importance?: number
   cue?: string
+  sourceText?: string
+  translatedText?: string
+  detail?: string
+  actions?: string[]
 }
 
 type OverlayTemplate = {
@@ -41,6 +45,12 @@ function normalizeLabel(text: string) {
   const cleaned = text.replace(/\s+/g, ' ').trim()
   if (!cleaned) return ''
   return cleaned.length > 18 ? `${cleaned.slice(0, 16)}…` : cleaned
+}
+
+function normalizeText(text: string, max = 48) {
+  const cleaned = text.replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+  return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned
 }
 
 function normalizeCards(cards: unknown): HudCard[] {
@@ -78,7 +88,17 @@ function normalizeFocusPoints(points: unknown, legacyHighlights?: unknown): Sema
       const importance =
         typeof obj.importance === 'number' && Number.isFinite(obj.importance) ? Math.max(1, Math.min(5, Math.round(obj.importance))) : undefined
       const cue = typeof obj.cue === 'string' ? obj.cue.trim() : undefined
-      return { label, kind, importance, cue }
+      const sourceText = typeof obj.sourceText === 'string' ? normalizeText(obj.sourceText, 42) : undefined
+      const translatedText = typeof obj.translatedText === 'string' ? normalizeText(obj.translatedText, 42) : undefined
+      const detail = typeof obj.detail === 'string' ? normalizeText(obj.detail, 72) : undefined
+      const actions = Array.isArray(obj.actions)
+        ? obj.actions
+            .filter((value): value is string => typeof value === 'string')
+            .map((value) => normalizeLabel(value))
+            .filter(Boolean)
+            .slice(0, 3)
+        : undefined
+      return { label, kind, importance, cue, sourceText, translatedText, detail, actions }
     })
     .filter(Boolean) as SemanticFocusPoint[]
 }
@@ -109,10 +129,11 @@ function buildSystemPrompt() {
     '  "summary": "一句短摘要，10-24 字",',
     '  "scene": {"name": "场景名", "confidence": 0.0-1.0, "description": "场景一句话"},',
     '  "ocrText": "图里真正可读到的关键短语，多个短语用 / 分隔，可为空",',
-    '  "focusPoints": [{"label":"HUD短标签","kind":"text|object|person|ui","importance":1-5,"cue":"为什么值得提示，不超过16字"}],',
+    '  "focusPoints": [{"label":"HUD短标签","kind":"text|object|person|ui","importance":1-5,"cue":"为什么值得提示，不超过16字","sourceText":"点选时显示的原文/元素名","translatedText":"翻译或转述结果","detail":"补充说明","actions":["按钮1","按钮2"]}],',
     '  "cards": [{"id":"...","type":"info|success|warning","title":"...","body":"...","actionLabel":"..."}]',
     '}',
     'focusPoints 返回 3-5 个，label 要短，尽量贴近画面里真正存在的元素或文字。',
+    '翻译模式下，sourceText 和 translatedText 尽量填写；其他模式下 translatedText 可以是转述结果。',
     'cards 返回 3-4 张，title 不超过 12 字，body 不超过 28 字，像 AI 眼镜实时提醒。',
     '如果图中文字太小、看不清或不确定，请明确保守表达，不要编造具体专有名词。',
   ].join('\n')
@@ -134,7 +155,7 @@ function buildUserPrompt(mode: DemoMode) {
     `当前模式：${mode}（${modeLabel(mode)}）`,
     focus,
     '请输出严格 JSON。',
-    'focusPoints 只输出短标签，不要坐标；系统会自己生成演示用 HUD 锚点。',
+    'focusPoints 只输出语义信息，不要坐标；系统会自己生成演示用 HUD 锚点。',
     '请识别并写入：scene.name / scene.description / summary / ocrText（如有）/ focusPoints / cards。',
     '图片数据在下方：',
   ].join('\n')
@@ -191,6 +212,33 @@ function splitOcrText(ocrText?: string) {
     .filter(Boolean)
 }
 
+function defaultActionsForMode(mode: DemoMode) {
+  if (mode === 'translate') return ['翻译', '解释']
+  if (mode === 'travel') return ['导航', '提醒']
+  if (mode === 'office') return ['摘要', '待办']
+  if (mode === 'business') return ['识别', '建议']
+  return ['识别', '操作']
+}
+
+function buildFallbackDetail(mode: DemoMode, point: SemanticFocusPoint, fallbackCard?: HudCard) {
+  if (point.detail) return point.detail
+  if (point.cue) return point.cue
+  if (fallbackCard?.body) return normalizeText(fallbackCard.body, 72)
+
+  if (mode === 'translate') return `点选后可查看 ${point.label} 的翻译与解释。`
+  if (mode === 'travel') return `点选后可查看 ${point.label} 的方向建议。`
+  if (mode === 'office') return `点选后可查看 ${point.label} 的摘要与待办。`
+  if (mode === 'business') return `点选后可查看 ${point.label} 的商务提示。`
+  return `点选后可查看 ${point.label} 的识别说明。`
+}
+
+function buildFallbackTranslation(mode: DemoMode, point: SemanticFocusPoint, fallbackCard?: HudCard) {
+  if (point.translatedText) return point.translatedText
+  if (mode === 'translate' && point.cue) return normalizeText(point.cue, 42)
+  if (fallbackCard?.body) return normalizeText(fallbackCard.body, 42)
+  return point.label
+}
+
 function getOverlayTemplates(mode: DemoMode): OverlayTemplate[] {
   if (mode === 'translate' || mode === 'office' || mode === 'business') {
     return [
@@ -235,6 +283,7 @@ function buildSemanticHighlights(mode: DemoMode, focusPoints: SemanticFocusPoint
 
   return points.slice(0, templates.length).map((point, idx) => {
     const template = templates[idx]
+    const fallbackCard = cards[idx] ?? cards[0]
     return {
       id: safeId('hl', idx),
       label: point.label,
@@ -244,6 +293,10 @@ function buildSemanticHighlights(mode: DemoMode, focusPoints: SemanticFocusPoint
       w: clamp01(template.w),
       h: clamp01(template.h),
       confidence: clamp01(0.55 + ((point.importance ?? 3) - 1) * 0.08),
+      sourceText: point.sourceText ?? point.label,
+      translatedText: buildFallbackTranslation(mode, point, fallbackCard),
+      detail: buildFallbackDetail(mode, point, fallbackCard),
+      actions: point.actions && point.actions.length ? point.actions : defaultActionsForMode(mode),
     }
   })
 }
@@ -343,10 +396,46 @@ const MOCK_PRESETS: Record<
     scene: { name: '文档翻译', confidence: 0.82, description: '检测到页面结构、标题与条款信息' },
     ocrText: 'WHEREAS / LIABILITY / SIGNATURE',
     focusPoints: [
-      { label: '标题区', kind: 'text', importance: 5, cue: '优先锁定文档主题' },
-      { label: 'WHEREAS 条款', kind: 'text', importance: 4, cue: '适合先做整段摘要' },
-      { label: '责任条款', kind: 'text', importance: 4, cue: '需要单独高亮风险点' },
-      { label: '签署区', kind: 'ui', importance: 3, cue: '方便生成收尾提醒' },
+      {
+        label: '标题区',
+        kind: 'text',
+        importance: 5,
+        cue: '优先锁定文档主题',
+        sourceText: "What's NEW in TRAE",
+        translatedText: 'TRAE 最新更新',
+        detail: '更像页面总标题，适合先翻译成一句主题说明。',
+        actions: ['翻译', '解释'],
+      },
+      {
+        label: 'WHEREAS 条款',
+        kind: 'text',
+        importance: 4,
+        cue: '适合先做整段摘要',
+        sourceText: 'WHEREAS',
+        translatedText: '鉴于条款 / 背景说明',
+        detail: '通常用于说明合同背景与签署前提，点选后适合弹出一句中文解释。',
+        actions: ['翻译', '摘要'],
+      },
+      {
+        label: '责任条款',
+        kind: 'text',
+        importance: 4,
+        cue: '需要单独高亮风险点',
+        sourceText: 'LIABILITY / INDEMNIFICATION',
+        translatedText: '责任与赔偿',
+        detail: '这类条款适合用 warning 风格卡片提示用户先关注风险。',
+        actions: ['翻译', '提醒'],
+      },
+      {
+        label: '签署区',
+        kind: 'ui',
+        importance: 3,
+        cue: '方便生成收尾提醒',
+        sourceText: 'SIGNATURE',
+        translatedText: '签署区域',
+        detail: '点选后可弹出“签字 / 确认 / 继续查看”等动作型 HUD 卡片。',
+        actions: ['翻译', '操作'],
+      },
     ],
     cards: [
       { id: safeId('m', 1), type: 'success', title: '文档类型识别', body: '当前更像合同/协议页面，适合做条款速览。', actionLabel: '查看摘要' },
@@ -360,10 +449,10 @@ const MOCK_PRESETS: Record<
     scene: { name: '出行导航', confidence: 0.79, description: '检测到路标、方向与潜在注意点' },
     ocrText: 'Gate / Exit / Platform',
     focusPoints: [
-      { label: '方向标识', kind: 'text', importance: 5, cue: '先给出下一步动作' },
-      { label: '拥挤区域', kind: 'person', importance: 4, cue: '提醒减速或绕行' },
-      { label: '目标入口', kind: 'object', importance: 4, cue: '适合做路线确认' },
-      { label: '提示牌', kind: 'ui', importance: 3, cue: '补充信息层级' },
+      { label: '方向标识', kind: 'text', importance: 5, cue: '先给出下一步动作', sourceText: 'Gate 12', translatedText: '前往 12 号登机口', detail: '适合直接弹出下一步方向。', actions: ['导航', '提醒'] },
+      { label: '拥挤区域', kind: 'person', importance: 4, cue: '提醒减速或绕行', sourceText: 'Crowd', translatedText: '前方人流密集', detail: '点选后可给出减速或绕行建议。', actions: ['提醒', '绕行'] },
+      { label: '目标入口', kind: 'object', importance: 4, cue: '适合做路线确认', sourceText: 'Exit', translatedText: '出口方向', detail: '可用作确认目标路径。', actions: ['导航', '确认'] },
+      { label: '提示牌', kind: 'ui', importance: 3, cue: '补充信息层级', sourceText: 'Platform', translatedText: '站台信息', detail: '作为补充信息层很合适。', actions: ['摘要', '提醒'] },
     ],
     cards: [
       { id: safeId('m', 1), type: 'success', title: '路线确认', body: '主路径已锁定，可直接给出下一步方向。', actionLabel: '继续前进' },
@@ -376,10 +465,10 @@ const MOCK_PRESETS: Record<
     scene: { name: '办公屏幕', confidence: 0.76, description: '检测到标题、正文与操作区' },
     ocrText: 'Roadmap / Pending / Next Step',
     focusPoints: [
-      { label: '标题栏', kind: 'ui', importance: 5, cue: '先建立页面上下文' },
-      { label: '正文区', kind: 'text', importance: 4, cue: '适合生成简报摘要' },
-      { label: '待办项', kind: 'text', importance: 4, cue: '可直接转动作建议' },
-      { label: '操作区', kind: 'ui', importance: 3, cue: '补充下一步按钮' },
+      { label: '标题栏', kind: 'ui', importance: 5, cue: '先建立页面上下文', sourceText: 'Roadmap', translatedText: '路线图', detail: '点选后适合先给页面摘要。', actions: ['摘要', '待办'] },
+      { label: '正文区', kind: 'text', importance: 4, cue: '适合生成简报摘要', sourceText: 'Pending Items', translatedText: '待处理事项', detail: '可压缩成一眼读懂的简报。', actions: ['摘要', '解释'] },
+      { label: '待办项', kind: 'text', importance: 4, cue: '可直接转动作建议', sourceText: 'Next Step', translatedText: '下一步', detail: '适合直接转成动作按钮。', actions: ['待办', '提醒'] },
+      { label: '操作区', kind: 'ui', importance: 3, cue: '补充下一步按钮', sourceText: 'Action', translatedText: '操作区域', detail: '点选后可给出继续处理建议。', actions: ['待办', '操作'] },
     ],
     cards: [
       { id: safeId('m', 1), type: 'success', title: '页面摘要', body: '适合将长内容压缩成一眼可读的 HUD 简报。', actionLabel: '查看摘要' },
@@ -392,10 +481,10 @@ const MOCK_PRESETS: Record<
     scene: { name: '商务识别', confidence: 0.8, description: '检测到身份、条款或联系人线索' },
     ocrText: 'Name / Company / Role',
     focusPoints: [
-      { label: '身份信息', kind: 'person', importance: 5, cue: '优先建立人物标签' },
-      { label: '公司字段', kind: 'text', importance: 4, cue: '方便生成联系人卡片' },
-      { label: '关键条款', kind: 'text', importance: 4, cue: '可转成谈判提醒' },
-      { label: '联络方式', kind: 'ui', importance: 3, cue: '适合动作按钮承接' },
+      { label: '身份信息', kind: 'person', importance: 5, cue: '优先建立人物标签', sourceText: 'Name', translatedText: '联系人姓名', detail: '适合第一时间形成名片卡。', actions: ['识别', '建议'] },
+      { label: '公司字段', kind: 'text', importance: 4, cue: '方便生成联系人卡片', sourceText: 'Company', translatedText: '所属公司', detail: '可作为商务上下文补充。', actions: ['识别', '摘要'] },
+      { label: '关键条款', kind: 'text', importance: 4, cue: '可转成谈判提醒', sourceText: 'Term', translatedText: '关键条件', detail: '适合叠加风险提醒。', actions: ['建议', '提醒'] },
+      { label: '联络方式', kind: 'ui', importance: 3, cue: '适合动作按钮承接', sourceText: 'Contact', translatedText: '联络方式', detail: '点选后可延展为保存联系人等动作。', actions: ['识别', '操作'] },
     ],
     cards: [
       { id: safeId('m', 1), type: 'success', title: '身份识别', body: '可将人名、公司、职位压缩成一张联系人 HUD。', actionLabel: '生成名片' },
@@ -408,10 +497,10 @@ const MOCK_PRESETS: Record<
     scene: { name: '识物分析', confidence: 0.78, description: '检测到主要设备与可解释特征' },
     ocrText: 'Device / Model / Control',
     focusPoints: [
-      { label: '主体设备', kind: 'object', importance: 5, cue: '锁定主要识别目标' },
-      { label: '控制区域', kind: 'ui', importance: 4, cue: '适合给出交互提示' },
-      { label: '品牌信息', kind: 'text', importance: 3, cue: '可补充简短说明' },
-      { label: '状态灯', kind: 'ui', importance: 3, cue: '增加实时感' },
+      { label: '主体设备', kind: 'object', importance: 5, cue: '锁定主要识别目标', sourceText: 'Device', translatedText: '主体设备', detail: '先展示设备名称，再补充一句用途。', actions: ['识别', '用途'] },
+      { label: '控制区域', kind: 'ui', importance: 4, cue: '适合给出交互提示', sourceText: 'Control', translatedText: '控制区域', detail: '适合点选后给出“如何操作”。', actions: ['操作', '提醒'] },
+      { label: '品牌信息', kind: 'text', importance: 3, cue: '可补充简短说明', sourceText: 'Model', translatedText: '型号信息', detail: '可做成补充说明层。', actions: ['识别', '说明'] },
+      { label: '状态灯', kind: 'ui', importance: 3, cue: '增加实时感', sourceText: 'Status', translatedText: '状态提示', detail: '适合强化实时监测感。', actions: ['提醒', '状态'] },
     ],
     cards: [
       { id: safeId('m', 1), type: 'success', title: '物体识别', body: 'HUD 可先给出名称，再补充一句用途。', actionLabel: '查看用途' },

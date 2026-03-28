@@ -40,6 +40,10 @@ export type AnalyzeHighlight = {
   w: number
   h: number
   confidence?: number
+  sourceText?: string
+  translatedText?: string
+  detail?: string
+  actions?: string[]
 }
 
 export type AnalyzeResult = {
