@@ -209,81 +209,67 @@ export default function Demo() {
             </div>
             {errorMessage ? <div className={`mt-2 text-xs ${status === 'done' ? 'text-amber-200' : 'text-rose-200'}`}>{errorMessage}</div> : null}
             {!hasKey ? (
-              <div className="mt-3 text-xs text-amber-200/90">
-                未配置 `VITE_MINIMAX_API_KEY`，当前展示本地语义 HUD 演示结果。
+              <div className="mt-3 text-[11px] text-amber-200/70">
+                未配置 Key，当前展示本地演示叠层。
               </div>
             ) : null}
             {hasKey ? (
-              <div className="mt-3 text-xs text-cyan-200/80">
-                当前视觉模型：`{minimaxConfig.visionModel}`。这版 Demo 使用 MiniMax 生成语义层，再由前端排版 HUD 锚点。
+              <div className="mt-3 text-[11px] text-cyan-200/60">
+                模型：{minimaxConfig.visionModel}
               </div>
             ) : null}
           </div>
 
           <div className="col-span-12 lg:col-span-4">
             <GlassPanel className="p-4" glow>
-              <div className="text-sm font-semibold text-zinc-100">模式切换</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-semibold text-zinc-100">模式切换</div>
+              </div>
               <div className="mt-3">
                 <ModeSelector value={mode} onChange={onModeChange} />
               </div>
 
-              <div className="mt-5 text-sm font-semibold text-zinc-100">上传素材</div>
-              <div className="mt-3 space-y-3">
+              <div className="mt-6 grid grid-cols-2 gap-3">
                 <UploadDropzone
                   accept="image/png,image/jpeg"
-                  label="上传图片"
-                  helper="建议：第一视角街景/室内/名片/屏幕等"
+                  label="图片"
+                  helper="街景/文档等"
                   onPick={pickImage}
                   disabled={status === 'scanning'}
                 />
                 <UploadDropzone
                   accept="video/mp4,video/quicktime"
-                  label="上传视频"
-                  helper="演示版：抽取首帧生成结果并按节奏弹卡片"
+                  label="视频"
+                  helper="短视频抽帧"
                   onPick={pickVideo}
                   disabled={status === 'scanning'}
                 />
               </div>
             </GlassPanel>
 
-            <GlassPanel className="mt-6 p-4" glow>
+            <GlassPanel className="mt-4 p-4" glow>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-zinc-100">HUD 交互</div>
-                  <div className="mt-1 text-xs text-zinc-400">点选高亮框弹出卡片，卡片支持拖动和收起</div>
+                  <div className="text-sm font-semibold text-zinc-100">HUD 结果</div>
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-3">
                 {result ? (
                   <>
                     <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-200">
                       <div className="text-[11px] text-zinc-400">摘要</div>
                       <div className="mt-1 font-medium text-cyan-200">{result.summary}</div>
                       {result.ocrText ? <div className="mt-2 text-[11px] text-zinc-300/90">OCR：{result.ocrText}</div> : null}
-                      {result.meta ? (
-                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-zinc-400">
-                          <span>来源：{result.meta.provider}</span>
-                          {result.meta.model ? <span>模型：{result.meta.model}</span> : null}
-                          <span>模式：{result.meta.overlayMode === 'semantic' ? '语义叠层' : '演示叠层'}</span>
-                        </div>
-                      ) : null}
                       {result.meta?.note ? <div className="mt-2 text-[11px] text-zinc-400">{result.meta.note}</div> : null}
-                      {result.highlights?.length ? (
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {result.highlights.slice(0, 5).map((highlight) => (
-                            <span key={highlight.id} className="rounded-full border border-cyan-200/12 bg-cyan-400/8 px-2.5 py-1 text-[11px] text-cyan-100/85">
-                              {highlight.label}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
                     </div>
                     <div className="mt-3">
                       <HudCardList cards={result.cards} />
                     </div>
                   </>
                 ) : (
-                  <div className="text-sm text-zinc-500">上传后点击“开始分析”</div>
+                  <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/5 text-sm text-zinc-500">
+                    等待分析结果
+                  </div>
                 )}
               </div>
             </GlassPanel>

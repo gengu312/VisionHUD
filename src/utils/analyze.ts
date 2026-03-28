@@ -21,12 +21,17 @@ type OverlayTemplate = {
   h: number
 }
 
-function stripThinkTags(text: string) {
-  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+function stripThinkTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim()
 }
 
 function extractJsonObject(text: string): string {
-  const cleaned = stripThinkTags(text)
+  let cleaned = stripThinkTags(text)
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.replace(/^```json\n?/g, '').replace(/\n?```$/g, '')
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```\n?/g, '').replace(/\n?```$/g, '')
+  }
   const first = cleaned.indexOf('{')
   const last = cleaned.lastIndexOf('}')
   if (first < 0 || last < 0 || last <= first) throw new Error('AI 输出未包含 JSON')
@@ -290,7 +295,7 @@ function splitOcrText(ocrText?: string) {
   if (!ocrText) return []
   if (isSuspiciousEncodedText(ocrText)) return []
   return ocrText
-    .split(/[\/|\n]/)
+    .split(/[/|\n]/)
     .map((part) => normalizeLabel(part))
     .filter((part) => !!part && !looksLikeGibberishLabel(part))
 }
@@ -459,6 +464,8 @@ export async function analyzeImage(mode: DemoMode, imageBase64: string): Promise
         }
       : undefined
   const ocrText = typeof parsed?.ocrText === 'string' && parsed.ocrText.trim() ? parsed.ocrText.trim() : undefined
+  const parsedMeta = typeof parsed?.meta === 'object' ? (parsed.meta as Record<string, unknown>) : undefined
+  const note = typeof parsedMeta?.note === 'string' ? parsedMeta.note : '语义叠层由 MiniMax 生成，框选位置为演示锚点布局。'
 
   return buildResultFromSemantic({
     mode,
@@ -470,7 +477,7 @@ export async function analyzeImage(mode: DemoMode, imageBase64: string): Promise
     source: 'minimax',
     provider: 'MiniMax',
     model: visionModel,
-    note: '语义叠层由 MiniMax 生成，框选位置为演示锚点布局。',
+    note,
   })
 }
 

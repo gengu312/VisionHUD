@@ -101,12 +101,14 @@ export default function HudMediaFrame({ status, previewUrl, fileType, result }: 
             />
           )
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-zinc-500">上传图片或视频开始体验</div>
+          <div className="flex h-full flex-col items-center justify-center text-zinc-500">
+            <div className="text-[13px]">点击右侧上传素材体验</div>
+          </div>
         )}
       </div>
 
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(circle_at_30%_20%,rgba(34,211,238,0.25),transparent_45%),radial-gradient(circle_at_85%_70%,rgba(56,189,248,0.18),transparent_52%)]" />
+        <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_30%_20%,rgba(34,211,238,0.25),transparent_45%),radial-gradient(circle_at_85%_70%,rgba(56,189,248,0.18),transparent_52%)]" />
         <div className="absolute inset-0 hud-scan" />
         <div className={cn('absolute inset-0 transition-opacity', status === 'scanning' ? 'opacity-100' : 'opacity-0')}>
           <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-cyan-400/20 to-transparent" />
