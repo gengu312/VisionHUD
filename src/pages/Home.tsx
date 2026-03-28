@@ -32,8 +32,8 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="mt-10 grid grid-cols-12 gap-6">
-          <div className="col-span-12 lg:col-span-7">
+        <div className="mt-10">
+          <div className="max-w-4xl">
             <div className="text-xs font-semibold tracking-widest text-cyan-200/80">AI GLASSES HUD</div>
             <h1 className="mt-3 text-3xl font-semibold leading-tight text-zinc-50 sm:text-4xl">
               戴上 AI 眼镜
@@ -66,25 +66,6 @@ export default function Home() {
                 </GlassPanel>
               ))}
             </div>
-          </div>
-
-          <div className="col-span-12 lg:col-span-5">
-            <GlassPanel glow className="relative overflow-hidden p-6">
-              <div className="text-sm font-semibold text-zinc-100">演示说明</div>
-              <div className="mt-2 text-sm leading-relaxed text-zinc-300">
-                这是一个以“可展示、可传播”为核心的营销 Demo：
-                <div className="mt-3 space-y-2 text-xs text-zinc-400">
-                  <div>1) 选择模式（翻译/出行/办公/商务/识物）</div>
-                  <div>2) 上传图片或视频</div>
-                  <div>3) 观看扫描仪式感动效</div>
-                  <div>4) HUD 分层弹出结果卡片</div>
-                </div>
-              </div>
-              <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-4">
-                <div className="text-xs font-semibold text-cyan-200/90">提示</div>
-                <div className="mt-1 text-xs text-zinc-300/90">如需真实 AI 输出，请在本地创建 `.env.local` 并配置 `VITE_MINIMAX_API_KEY`。</div>
-              </div>
-            </GlassPanel>
           </div>
         </div>
       </div>
