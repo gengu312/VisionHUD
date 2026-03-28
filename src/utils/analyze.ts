@@ -65,22 +65,49 @@ function isUpperToken(text: string) {
   return /^[A-Z0-9][A-Z0-9./:_-]{1,20}$/.test(text)
 }
 
+function isDateFragment(text: string) {
+  return /^\d{1,4}[-/.]\d{1,2}([-/.:]\d{1,2})?$/.test(text)
+}
+
+function isLikelyNaturalAsciiWord(text: string) {
+  if (!/^[A-Za-z][A-Za-z'-]{2,20}$/.test(text)) return false
+  const vowelCount = (text.match(/[aeiouAEIOU]/g) ?? []).length
+  return vowelCount >= 1
+}
+
+function isSuspiciousEncodedText(text: string) {
+  const compact = text.replace(/\s+/g, '')
+  if (compact.length < 12) return false
+  if (/^data:image\//i.test(compact)) return true
+  if (/^[A-Za-z0-9+/=]+$/.test(compact) && compact.length >= 16) return true
+  return false
+}
+
 function looksLikeGibberishLabel(text: string) {
   const cleaned = normalizeText(text, 24)
   if (!cleaned) return true
   if (hasCjk(cleaned)) return false
   if (cleaned.includes(' ')) return false
-  if (isVersionLike(cleaned) || isUpperToken(cleaned)) return false
+  if (isVersionLike(cleaned) || isDateFragment(cleaned)) return false
+  if (isLikelyNaturalAsciiWord(cleaned)) return false
+  if (isUpperToken(cleaned) && /[A-Z]{3,}/.test(cleaned)) return false
   if (/[+=]{1}|\/{2,}/.test(cleaned)) return true
 
   const asciiWord = /^[A-Za-z0-9+/_-]+$/.test(cleaned)
   const hasMixedCase = /[A-Z]/.test(cleaned) && /[a-z]/.test(cleaned)
   const hasDigit = /\d/.test(cleaned)
   const vowelCount = (cleaned.match(/[aeiouAEIOU]/g) ?? []).length
+  const lettersOnly = cleaned.replace(/[^A-Za-z]/g, '')
+  const digitsOnly = cleaned.replace(/[^0-9]/g, '')
 
+  if (/^[A-Za-z0-9]{1,3}$/.test(cleaned) && !isVersionLike(cleaned)) return true
+  if (asciiWord && cleaned.length <= 5 && hasDigit) return true
+  if (asciiWord && cleaned.length <= 8 && vowelCount === 0) return true
   if (asciiWord && cleaned.length >= 6 && vowelCount === 0) return true
+  if (asciiWord && cleaned.length >= 10 && digitsOnly.length >= 2) return true
   if (asciiWord && cleaned.length >= 8 && hasMixedCase && hasDigit) return true
   if (/^[A-Za-z]{6,}$/.test(cleaned) && hasMixedCase && vowelCount <= 1) return true
+  if (lettersOnly.length >= 8 && vowelCount <= 1) return true
 
   return false
 }
@@ -239,6 +266,7 @@ function dedupeFocusPoints(points: SemanticFocusPoint[]) {
 
 function splitOcrText(ocrText?: string) {
   if (!ocrText) return []
+  if (isSuspiciousEncodedText(ocrText)) return []
   return ocrText
     .split(/[\/|\n]/)
     .map((part) => normalizeLabel(part))
