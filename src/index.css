@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .hud-scan {
+    background-image: linear-gradient(to bottom, transparent, rgba(34, 211, 238, 0.12), transparent);
+    background-size: 100% 180px;
+    animation: hudScan 2.8s linear infinite;
+    opacity: 0.35;
+  }
+
+  .hud-corners {
+    background:
+      linear-gradient(to right, rgba(34, 211, 238, 0.45) 2px, transparent 2px) 18px 18px / 48px 2px no-repeat,
+      linear-gradient(to bottom, rgba(34, 211, 238, 0.45) 2px, transparent 2px) 18px 18px / 2px 48px no-repeat,
+      linear-gradient(to left, rgba(34, 211, 238, 0.45) 2px, transparent 2px) calc(100% - 18px) 18px / 48px 2px no-repeat,
+      linear-gradient(to bottom, rgba(34, 211, 238, 0.45) 2px, transparent 2px) calc(100% - 18px) 18px / 2px 48px no-repeat,
+      linear-gradient(to right, rgba(34, 211, 238, 0.45) 2px, transparent 2px) 18px calc(100% - 18px) / 48px 2px no-repeat,
+      linear-gradient(to top, rgba(34, 211, 238, 0.45) 2px, transparent 2px) 18px calc(100% - 18px) / 2px 48px no-repeat,
+      linear-gradient(to left, rgba(34, 211, 238, 0.45) 2px, transparent 2px) calc(100% - 18px) calc(100% - 18px) / 48px 2px no-repeat,
+      linear-gradient(to top, rgba(34, 211, 238, 0.45) 2px, transparent 2px) calc(100% - 18px) calc(100% - 18px) / 2px 48px no-repeat;
+    opacity: 0.55;
+  }
+
+  .hud-pulse {
+    animation: hudPulse 1.6s ease-in-out infinite;
+  }
+
+  .hud-pop {
+    animation: hudPop 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes hudScan {
+  0% {
+    transform: translateY(-25%);
+  }
+  100% {
+    transform: translateY(25%);
+  }
+}
+
+@keyframes hudPulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  55% {
+    transform: scale(1.06);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+}
+
+@keyframes hudPop {
+  0% {
+    transform: translateY(6px) scale(0.98);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
