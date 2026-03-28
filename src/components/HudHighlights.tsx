@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { X } from 'lucide-react'
 import type { AnalyzeHighlight, DemoMode } from '@/types/demo'
 import { cn } from '@/lib/utils'
@@ -89,10 +89,25 @@ export default function HudHighlights({
   const items = useMemo(() => highlights.slice(0, 6), [highlights])
   const [selectedId, setSelectedId] = useState<string>()
   const [selectedAction, setSelectedAction] = useState<string>()
+  const [cardOffset, setCardOffset] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragRef = useRef<{
+    startX: number
+    startY: number
+    baseOffsetX: number
+    baseOffsetY: number
+    minX: number
+    maxX: number
+    minY: number
+    maxY: number
+  } | null>(null)
 
   useEffect(() => {
     setSelectedId(undefined)
     setSelectedAction(undefined)
+    setCardOffset({ x: 0, y: 0 })
+    dragRef.current = null
+    setIsDragging(false)
   }, [highlights, mode])
 
   const selected = useMemo(() => items.find((item) => item.id === selectedId), [items, selectedId])
@@ -104,6 +119,53 @@ export default function HudHighlights({
       setSelectedAction(available[0])
     }
   }, [mode, selected, selectedAction])
+
+  useEffect(() => {
+    setCardOffset({ x: 0, y: 0 })
+    dragRef.current = null
+    setIsDragging(false)
+  }, [selectedId])
+
+  useEffect(() => {
+    function handlePointerMove(event: PointerEvent) {
+      const drag = dragRef.current
+      if (!drag) return
+      const nextX = clamp(drag.baseOffsetX + event.clientX - drag.startX, drag.minX, drag.maxX)
+      const nextY = clamp(drag.baseOffsetY + event.clientY - drag.startY, drag.minY, drag.maxY)
+      setCardOffset({ x: nextX, y: nextY })
+    }
+
+    function stopDrag() {
+      if (!dragRef.current) return
+      dragRef.current = null
+      setIsDragging(false)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', stopDrag)
+    window.addEventListener('pointercancel', stopDrag)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', stopDrag)
+      window.removeEventListener('pointercancel', stopDrag)
+    }
+  }, [])
+
+  function startDrag(event: ReactPointerEvent<HTMLDivElement>, baseLeft: number, baseTop: number, cardW: number, cardH: number) {
+    event.preventDefault()
+    event.stopPropagation()
+    dragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      baseOffsetX: cardOffset.x,
+      baseOffsetY: cardOffset.y,
+      minX: rect.x + 12 - baseLeft,
+      maxX: rect.x + rect.width - cardW - 12 - baseLeft,
+      minY: rect.y + 12 - baseTop,
+      maxY: rect.y + rect.height - cardH - 12 - baseTop,
+    }
+    setIsDragging(true)
+  }
 
   return (
     <div className="absolute inset-0">
@@ -160,14 +222,17 @@ export default function HudHighlights({
             const width = selected.w * rect.width
             const height = selected.h * rect.height
             const cardW = clamp(rect.width * 0.3, 260, 340)
+            const cardH = 208
             const preferRight = left + width + cardW + 34 < rect.x + rect.width
             const anchorX = preferRight ? left + width : left
             const anchorY = top + Math.min(height * 0.5, 72)
             const idealLeft = preferRight ? left + width + 18 : left - cardW - 18
             const cardLeft = clamp(idealLeft, rect.x + 12, rect.x + rect.width - cardW - 12)
-            const cardTop = clamp(anchorY - 94, rect.y + 12, rect.y + rect.height - 188)
-            const lineX2 = preferRight ? cardLeft : cardLeft + cardW
-            const lineY2 = cardTop + 92
+            const cardTop = clamp(anchorY - 94, rect.y + 12, rect.y + rect.height - cardH - 12)
+            const finalLeft = cardLeft + cardOffset.x
+            const finalTop = cardTop + cardOffset.y
+            const lineX2 = preferRight ? finalLeft : finalLeft + cardW
+            const lineY2 = finalTop + 92
             const dx = lineX2 - anchorX
             const dy = lineY2 - anchorY
             const len = Math.max(1, Math.hypot(dx, dy))
@@ -189,7 +254,7 @@ export default function HudHighlights({
                 />
                 <div
                   className="absolute pointer-events-auto rounded-[22px] border border-cyan-100/12 bg-zinc-950/78 px-4 py-4 text-zinc-100 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl hud-pop"
-                  style={{ left: cardLeft, top: cardTop, width: cardW }}
+                  style={{ left: finalLeft, top: finalTop, width: cardW, minHeight: cardH }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -206,6 +271,17 @@ export default function HudHighlights({
                     >
                       <X className="h-4 w-4" />
                     </button>
+                  </div>
+
+                  <div
+                    className={cn(
+                      'mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] tracking-[0.18em] transition',
+                      isDragging ? 'border-cyan-200/30 bg-cyan-400/12 text-cyan-100' : 'border-white/10 bg-white/5 text-zinc-400',
+                    )}
+                    onPointerDown={(event) => startDrag(event, cardLeft, cardTop, cardW, cardH)}
+                  >
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" />
+                    <span>{isDragging ? 'DRAGGING HUD' : 'DRAG HUD'}</span>
                   </div>
 
                   <div className="mt-4 rounded-2xl border border-cyan-200/10 bg-white/[0.03] px-3 py-3">

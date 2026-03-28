@@ -53,6 +53,38 @@ function normalizeText(text: string, max = 48) {
   return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned
 }
 
+function hasCjk(text: string) {
+  return /[\u3400-\u9fff]/.test(text)
+}
+
+function isVersionLike(text: string) {
+  return /^(v)?\d+(\.\d+){1,3}$/i.test(text) || /^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(text)
+}
+
+function isUpperToken(text: string) {
+  return /^[A-Z0-9][A-Z0-9./:_-]{1,20}$/.test(text)
+}
+
+function looksLikeGibberishLabel(text: string) {
+  const cleaned = normalizeText(text, 24)
+  if (!cleaned) return true
+  if (hasCjk(cleaned)) return false
+  if (cleaned.includes(' ')) return false
+  if (isVersionLike(cleaned) || isUpperToken(cleaned)) return false
+  if (/[+=]{1}|\/{2,}/.test(cleaned)) return true
+
+  const asciiWord = /^[A-Za-z0-9+/_-]+$/.test(cleaned)
+  const hasMixedCase = /[A-Z]/.test(cleaned) && /[a-z]/.test(cleaned)
+  const hasDigit = /\d/.test(cleaned)
+  const vowelCount = (cleaned.match(/[aeiouAEIOU]/g) ?? []).length
+
+  if (asciiWord && cleaned.length >= 6 && vowelCount === 0) return true
+  if (asciiWord && cleaned.length >= 8 && hasMixedCase && hasDigit) return true
+  if (/^[A-Za-z]{6,}$/.test(cleaned) && hasMixedCase && vowelCount <= 1) return true
+
+  return false
+}
+
 function normalizeCards(cards: unknown): HudCard[] {
   if (!Array.isArray(cards)) return []
   return cards
@@ -80,6 +112,7 @@ function normalizeFocusPoints(points: unknown, legacyHighlights?: unknown): Sema
       const obj = item as Record<string, unknown>
       const label = typeof obj.label === 'string' ? normalizeLabel(obj.label) : ''
       if (!label) return null
+      if (looksLikeGibberishLabel(label)) return null
 
       const rawKind = obj.kind
       const kind: AnalyzeHighlightKind =
@@ -209,7 +242,7 @@ function splitOcrText(ocrText?: string) {
   return ocrText
     .split(/[\/|\n]/)
     .map((part) => normalizeLabel(part))
-    .filter(Boolean)
+    .filter((part) => !!part && !looksLikeGibberishLabel(part))
 }
 
 function defaultActionsForMode(mode: DemoMode) {

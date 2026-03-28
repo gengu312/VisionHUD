@@ -250,7 +250,7 @@ export default function Demo() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-zinc-100">HUD 交互</div>
-                  <div className="mt-1 text-xs text-zinc-400">点选画面中的高亮框，贴边弹出可收起卡片</div>
+                  <div className="mt-1 text-xs text-zinc-400">点选高亮框弹出卡片，卡片支持拖动和收起</div>
                 </div>
               </div>
               <div className="mt-4">
