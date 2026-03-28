@@ -1,3 +1,4 @@
+import { jsonrepair } from 'jsonrepair'
 import type { AnalyzeHighlight, AnalyzeHighlightKind, AnalyzeResult, DemoMode, HudCard } from '@/types/demo'
 import { getMinimaxConfig } from '@/utils/env'
 import { minimaxChatCompletion } from '@/utils/minimax'
@@ -30,6 +31,27 @@ function extractJsonObject(text: string): string {
   const last = cleaned.lastIndexOf('}')
   if (first < 0 || last < 0 || last <= first) throw new Error('AI 输出未包含 JSON')
   return cleaned.slice(first, last + 1)
+}
+
+function toRecord(value: unknown) {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined
+}
+
+function parseAiPayload(raw: string) {
+  const candidate = extractJsonObject(raw)
+
+  try {
+    return toRecord(JSON.parse(candidate))
+  } catch (firstError) {
+    try {
+      const repaired = jsonrepair(candidate)
+      return toRecord(JSON.parse(repaired))
+    } catch (repairError) {
+      const firstMessage = firstError instanceof Error ? firstError.message : 'unknown parse error'
+      const repairMessage = repairError instanceof Error ? repairError.message : 'unknown repair error'
+      throw new Error(`AI 输出 JSON 无法解析：${firstMessage}；repair: ${repairMessage}`)
+    }
+  }
 }
 
 function safeId(prefix: string, idx: number) {
@@ -409,9 +431,19 @@ export async function analyzeImage(mode: DemoMode, imageBase64: string): Promise
     { model: visionModel, temperature: 0.35 },
   )
 
-  const jsonText = extractJsonObject(raw)
-  const parsedUnknown: unknown = JSON.parse(jsonText)
-  const parsed = parsedUnknown && typeof parsedUnknown === 'object' ? (parsedUnknown as Record<string, unknown>) : undefined
+  let parsed: Record<string, unknown> | undefined
+  try {
+    parsed = parseAiPayload(raw)
+  } catch {
+    const fallback = buildMockResult(mode)
+    return {
+      ...fallback,
+      meta: {
+        ...fallback.meta,
+        note: 'MiniMax 返回了格式不稳定的内容，已自动回退到本地 HUD 演示结果。',
+      },
+    }
+  }
 
   const cards = normalizeCards(parsed?.cards)
   const focusPoints = normalizeFocusPoints(parsed?.focusPoints, parsed?.highlights)
