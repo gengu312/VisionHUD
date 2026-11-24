@@ -1,57 +1,22 @@
-# React + TypeScript + Vite
+# VisionHUD
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> 原始开发时间：2026-03
 
-Currently, two official plugins are available:
+AI 智能眼镜第一视角 HUD 浮层 Web 营销 Demo。用户上传图片或视频后，页面以智能眼镜 HUD 抬头显示浮层的方式叠加 AI 分析结果，呈现未来感、第一视角、可录屏的演示体验。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 技术栈
 
-## Expanding the ESLint configuration
+- React 18 + TypeScript + Vite
+- Tailwind CSS + Zustand + React Router
+- Minimax AI 接口集成
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 快速开始
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+pnpm install
+cp .env.example .env.local
+# 在 .env.local 中填写 API Key
+pnpm dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  extends: [
-    // other configs...
-    // Enable lint rules for React
-    reactX.configs['recommended-typescript'],
-    // Enable lint rules for React DOM
-    reactDom.configs.recommended,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+更多需求背景见 [MVP-需求简版.md](./MVP-需求简版.md)。
