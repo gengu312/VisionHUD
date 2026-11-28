@@ -40,7 +40,7 @@ export default function Home() {
               <span className="block text-cyan-200">看见世界的下一层信息</span>
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-zinc-300">
-              上传图片或短视频，快速模拟“第一视角 AI 辅助”。无需硬件接入，适合展会大屏、官网宣传、招商演示与录屏素材。
+              上传图片或短视频，快速模拟“第一视角 AI 辅助”。无需硬件接入，适合智能眼镜概念验证、交互原型展示与录屏素材。
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">

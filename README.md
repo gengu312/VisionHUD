@@ -7,7 +7,7 @@
 
 > Original development date: 2026-03
 
-A first-person AI smart-glasses HUD overlay web marketing demo. After uploading an image or video, the page renders AI analysis results as a smart-glasses heads-up display (HUD) overlay—delivering a futuristic, first-person, screen-recordable showcase experience.
+A first-person AI smart-glasses HUD overlay web interactive prototype demo. After uploading an image or video, the page renders AI analysis results as a smart-glasses heads-up display (HUD) overlay—delivering a futuristic, first-person, screen-recordable showcase experience.
 
 ## Tech Stack
 
